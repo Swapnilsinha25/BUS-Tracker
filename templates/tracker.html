@@ -1,130 +1,121 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-  <head>
-    <title>Bus Tracker</title>
+<head>
+<title>Bus Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+body{
+margin:0;
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background:linear-gradient(135deg,#070b1a,#0a1f44,#1a0f3d);
+font-family:Arial;
+color:white;
+}
 
-    <link
-      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
+.card{
+padding:40px;
+border-radius:15px;
+background:rgba(20,30,60,0.4);
+backdrop-filter:blur(15px);
+text-align:center;
+}
 
-    <style>
-      body {
-        margin: 0;
-        height: 100vh;
+button{
+padding:15px 20px;
+margin:10px;
+border:none;
+border-radius:10px;
+background:#00d4ff;
+color:white;
+cursor:pointer;
+}
 
-        display: flex;
-        justify-content: center;
-        align-items: center;
+input{
+padding:10px;
+border-radius:10px;
+border:none;
+margin-bottom:10px;
+width:100%;
+}
+</style>
+</head>
 
-        background: linear-gradient(135deg, #070b1a, #0a1f44, #1a0f3d);
+<body>
 
-        font-family: "Orbitron", sans-serif;
-        color: white;
-      }
+<div class="card">
 
-      .card {
-        padding: 50px;
-        border-radius: 20px;
+<h2>🚌 Smart Bus Tracker</h2>
 
-        background: rgba(20, 30, 60, 0.4);
-        backdrop-filter: blur(15px);
+<input id="busNumber" placeholder="Bus Number (optional)">
 
-        box-shadow: 0 0 50px rgba(0, 200, 255, 0.2);
+<br>
 
-        text-align: center;
-      }
+<button onclick="shareLocation()">
+Share Bus Location
+</button>
 
-      button {
-        padding: 15px 25px;
-        margin: 10px;
+<button onclick="viewLocation()">
+View Bus Location
+</button>
 
-        border: none;
-        border-radius: 12px;
+</div>
 
-        background: linear-gradient(45deg, #00d4ff, #0072ff);
+<script>
 
-        color: white;
+let watchId;
 
-        font-size: 16px;
+function shareLocation(){
 
-        cursor: pointer;
+let bus = document.getElementById("busNumber").value || "default";
 
-        transition: 0.3s;
-      }
+localStorage.setItem("sharing","true");
+localStorage.setItem("bus",bus);
 
-      button:hover {
-        transform: scale(1.05);
-        box-shadow: 0 0 20px #00d4ff;
-      }
-    </style>
-  </head>
+navigator.geolocation.watchPosition(
 
-  <body>
-    <div class="card">
-      <h2>🚌 Smart Bus Tracker</h2>
+function(pos){
 
-      <input
-        id="busNumber"
-        placeholder="Bus Number (optional)"
-        style="
-          padding: 10px;
-          border-radius: 10px;
-          border: none;
-          margin-bottom: 10px;
-          width: 100%;
-        "
-      />
+fetch("/update_location",{
 
-      <br />
+method:"POST",
 
-      <button onclick="shareLocation()">Share Bus Location</button>
+headers:{
+"Content-Type":"application/json"
+},
 
-      <button onclick="viewLocation()">View Bus Location</button>
-    </div>
+body:JSON.stringify({
+lat:pos.coords.latitude,
+lng:pos.coords.longitude,
+bus:bus
+})
 
-    <script>
-      function shareLocation() {
-        let bus = document.getElementById("busNumber").value || "default";
+});
 
-        localStorage.setItem("sharing", "true");
-        localStorage.setItem("bus", bus);
+},
 
-        startTracking();
+function(error){
+alert("Please allow location permission.");
+},
 
-        window.location = "/viewer";
-      }
+{
+enableHighAccuracy:true
+}
+);
 
-      function viewLocation() {
-        localStorage.setItem("sharing", "false");
+window.location="/viewer";
 
-        window.location = "/viewer";
-      }
+}
 
-      function startTracking() {
-        navigator.geolocation.watchPosition(
-          function (pos) {
-            fetch("/update_location", {
-              method: "POST",
+function viewLocation(){
+localStorage.setItem("sharing","false");
+window.location="/viewer";
+}
 
-              headers: {
-                "Content-Type": "application/json",
-              },
+</script>
 
-              body: JSON.stringify({
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                bus: localStorage.getItem("bus"),
-              }),
-            });
-          },
-          null,
-          { enableHighAccuracy: true },
-        );
-      }
-    </script>
-  </body>
+</body>
 </html>
-
