@@ -1,0 +1,101 @@
+:root {
+
+--bg-dark: #0a0f1c;
+--card-dark: #121a2b;
+--text-dark: #ffffff;
+--accent: #00d4ff;
+
+--bg-light: #f4f7fb;
+--card-light: #ffffff;
+--text-light: #000000;
+
+}
+
+body {
+
+margin: 0;
+font-family: Arial;
+background: var(--bg-dark);
+color: var(--text-dark);
+
+}
+
+.light-mode {
+
+background: var(--bg-light);
+color: var(--text-light);
+
+}
+
+.container {
+
+max-width: 900px;
+margin: auto;
+padding: 15px;
+
+}
+
+.card {
+
+background: var(--card-dark);
+padding: 15px;
+border-radius: 12px;
+margin-bottom: 10px;
+
+}
+
+.light-mode .card {
+
+background: var(--card-light);
+
+}
+
+button {
+
+background: var(--accent);
+border: none;
+padding: 10px 15px;
+border-radius: 8px;
+color: white;
+cursor: pointer;
+
+}
+
+button:hover {
+
+opacity: 0.8;
+
+}
+
+#map {
+
+height: 400px;
+border-radius: 12px;
+
+}
+
+.status-live {
+
+color: #00ff88;
+
+}
+
+.status-offline {
+
+color: red;
+
+}
+
+.toggle {
+
+float: right;
+
+}
+
+@media(max-width:600px){
+
+#map {
+height: 300px;
+}
+
+}

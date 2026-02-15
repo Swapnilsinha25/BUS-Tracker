@@ -1,0 +1,291 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Smart Bus Viewer</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+
+        font-family: "Orbitron", sans-serif;
+
+        background: linear-gradient(135deg, #070b1a, #0a1f44, #1a0f3d);
+
+        background-size: 400% 400%;
+
+        animation: bgShift 15s infinite alternate;
+
+        color: rgba(255, 255, 255, 0.9);
+
+        display: flex;
+        flex-direction: column;
+      }
+
+      @keyframes bgShift {
+        0% {
+          background-position: 0% 50%;
+        }
+        100% {
+          background-position: 100% 50%;
+        }
+      }
+
+      .topbar {
+        padding: 20px;
+
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .title {
+        font-size: 26px;
+      }
+
+      .status {
+        font-size: 16px;
+      }
+
+      .live {
+        color: #00ff88;
+        animation: pulse 2s infinite;
+      }
+
+      .offline {
+        color: red;
+      }
+
+      @keyframes pulse {
+        0% {
+          text-shadow: 0 0 5px #00ff88;
+        }
+        50% {
+          text-shadow: 0 0 20px #00ff88;
+        }
+        100% {
+          text-shadow: 0 0 5px #00ff88;
+        }
+      }
+
+      .map-container {
+        flex: 1;
+        margin: 15px;
+
+        border-radius: 15px;
+
+        overflow: hidden;
+
+        box-shadow: 0 0 40px rgba(0, 200, 255, 0.2);
+      }
+
+      #map {
+        height: 100%;
+        width: 100%;
+      }
+
+      .bottom-card {
+        margin: 15px;
+
+        padding: 20px;
+
+        border-radius: 15px;
+
+        background: rgba(20, 30, 60, 0.4);
+
+        backdrop-filter: blur(15px);
+
+        box-shadow: 0 0 40px rgba(0, 200, 255, 0.2);
+      }
+
+      button {
+        padding: 12px 20px;
+
+        border-radius: 12px;
+
+        border: none;
+
+        font-size: 16px;
+
+        cursor: pointer;
+
+        background: linear-gradient(45deg, #00d4ff, #0072ff);
+
+        color: white;
+
+        margin-top: 10px;
+
+        transition: 0.3s;
+      }
+
+      button:hover {
+        transform: scale(1.05);
+
+        box-shadow: 0 0 20px #00d4ff;
+      }
+
+      .message {
+        margin-top: 10px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="topbar">
+      <div class="title">🛰 Live Bus Viewer</div>
+
+      <div class="status">
+        Status:
+        <span id="liveStatus" class="offline"> OFFLINE </span>
+      </div>
+    </div>
+
+    <div class="map-container">
+      <div id="map"></div>
+    </div>
+
+    <div class="bottom-card">
+      <div>
+        Speed:
+        <span id="speed"> 0 km/h </span>
+      </div>
+
+      <div class="message" id="busMessage">Waiting for bus...</div>
+
+      <button onclick="useMyLocation()">Use My Location as Destination</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+      let map = L.map("map").setView([28.6139, 77.209], 13);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+        map,
+      );
+
+      let busIcon = L.icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/61/61231.png",
+
+        iconSize: [40, 40],
+      });
+
+      let busMarker = L.marker([28.6139, 77.209], { icon: busIcon }).addTo(map);
+
+      let destMarker;
+      let routeLine;
+
+      let lastLat;
+      let lastLng;
+      let lastTime;
+
+      function getBusMessage(speed) {
+        if (speed < 5) return "Bus is crawling like turtle 🐢";
+
+        if (speed < 20) return "Bus is chilling in traffic 🚗";
+
+        if (speed < 50) return "Bus is zooming fast today ⚡";
+
+        return "Driver is in beast mode 🔥";
+      }
+
+      function getDistance(lat1, lon1, lat2, lon2) {
+        let R = 6371;
+
+        let dLat = ((lat2 - lat1) * Math.PI) / 180;
+        let dLon = ((lon2 - lon1) * Math.PI) / 180;
+
+        let a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) ** 2;
+
+        let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
+      }
+
+      function useMyLocation() {
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          let lat = pos.coords.latitude;
+          let lng = pos.coords.longitude;
+
+          if (destMarker) map.removeLayer(destMarker);
+
+          destMarker = L.marker([lat, lng]).addTo(map);
+        });
+      }
+
+      function updateLocation() {
+        fetch("/get_location")
+          .then((res) => res.json())
+
+          .then((data) => {
+            let lat = data.lat;
+            let lng = data.lng;
+
+            busMarker.setLatLng([lat, lng]);
+
+            map.setView([lat, lng]);
+
+            let now = Date.now();
+
+            if (now - data.timestamp * 1000 < 10000) {
+              document.getElementById("liveStatus").innerText = "LIVE";
+
+              document.getElementById("liveStatus").className = "live";
+            } else {
+              document.getElementById("liveStatus").innerText = "OFFLINE";
+
+              document.getElementById("liveStatus").className = "offline";
+            }
+
+            if (lastLat) {
+              let distance = getDistance(lastLat, lastLng, lat, lng);
+
+              let timeDiff = (now - lastTime) / 1000 / 3600;
+
+              let speed = distance / timeDiff;
+
+              document.getElementById("speed").innerText =
+                speed.toFixed(1) + " km/h";
+
+              document.getElementById("busMessage").innerText =
+                getBusMessage(speed);
+            }
+
+            lastLat = lat;
+            lastLng = lng;
+            lastTime = now;
+
+            if (destMarker) {
+              let dest = destMarker.getLatLng();
+
+              if (routeLine) map.removeLayer(routeLine);
+
+              routeLine = L.polyline(
+                [
+                  [lat, lng],
+                  [dest.lat, dest.lng],
+                ],
+                { color: "#00d4ff" },
+              ).addTo(map);
+            }
+          });
+      }
+
+      setInterval(updateLocation, 2000);
+    </script>
+  </body>
+</html>

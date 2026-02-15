@@ -1,0 +1,263 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Bus Tracker</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        background: linear-gradient(135deg, #070b1a, #0a1f44, #1a0f3d);
+
+        background-size: 400% 400%;
+
+        animation: bgShift 15s infinite alternate;
+
+        font-family: "Orbitron", sans-serif;
+
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      @keyframes bgShift {
+        0% {
+          background-position: 0% 50%;
+        }
+        100% {
+          background-position: 100% 50%;
+        }
+      }
+
+      .card {
+        width: 400px;
+        max-width: 90%;
+
+        padding: 50px;
+
+        border-radius: 20px;
+
+        background: rgba(20, 30, 60, 0.4);
+
+        backdrop-filter: blur(15px);
+
+        box-shadow:
+          0 0 50px rgba(0, 200, 255, 0.2),
+          0 0 100px rgba(0, 200, 255, 0.1);
+
+        text-align: center;
+
+        animation: fadeIn 1s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .title {
+        font-size: 32px;
+        margin-bottom: 30px;
+
+        letter-spacing: 2px;
+      }
+
+      input {
+        width: 100%;
+
+        padding: 12px;
+
+        margin-bottom: 20px;
+
+        border-radius: 10px;
+
+        border: none;
+
+        outline: none;
+
+        background: rgba(255, 255, 255, 0.05);
+
+        color: white;
+
+        font-size: 16px;
+      }
+
+      button {
+        width: 48%;
+
+        padding: 12px;
+
+        margin: 5px;
+
+        border-radius: 12px;
+
+        border: none;
+
+        font-size: 16px;
+
+        cursor: pointer;
+
+        background: linear-gradient(45deg, #00d4ff, #0072ff);
+
+        color: white;
+
+        transition: 0.3s;
+      }
+
+      button:hover {
+        transform: scale(1.05);
+
+        box-shadow: 0 0 20px #00d4ff;
+      }
+
+      .status {
+        margin-top: 20px;
+
+        font-size: 18px;
+      }
+
+      .live {
+        color: #00ff88;
+
+        animation: pulse 2s infinite;
+      }
+
+      .stopped {
+        color: #ff4444;
+      }
+
+      @keyframes pulse {
+        0% {
+          text-shadow: 0 0 5px #00ff88;
+        }
+        50% {
+          text-shadow: 0 0 20px #00ff88;
+        }
+        100% {
+          text-shadow: 0 0 5px #00ff88;
+        }
+      }
+
+      .message {
+        margin-top: 15px;
+
+        font-size: 16px;
+
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <div class="title">🚌 Bus Tracker</div>
+
+      <input id="busNumber" placeholder="Enter Bus Number (optional)" />
+
+      <button onclick="startTracking()">Start Tracking</button>
+
+      <button onclick="stopTracking()">Stop Tracking</button>
+
+      <div class="status">
+        Status:
+        <span id="trackStatus" class="stopped"> Stopped </span>
+      </div>
+
+      <div class="message" id="busMessage">Waiting for bus...</div>
+    </div>
+
+    <script>
+      let watchId;
+
+      function getBusMessage(speed) {
+        if (speed < 5) return "Bus is crawling like turtle 🐢";
+
+        if (speed < 20) return "Bus is chilling in traffic 🚗";
+
+        if (speed < 50) return "Bus is zooming fast today ⚡";
+
+        return "Driver is in beast mode 🔥";
+      }
+
+      let lastLat;
+      let lastLng;
+      let lastTime;
+
+      function startTracking() {
+        document.getElementById("trackStatus").innerText = "LIVE";
+        document.getElementById("trackStatus").className = "live";
+
+        watchId = navigator.geolocation.watchPosition(
+          function (pos) {
+            let lat = pos.coords.latitude;
+            let lng = pos.coords.longitude;
+
+            let now = Date.now();
+
+            if (lastLat) {
+              let distance =
+                Math.sqrt((lat - lastLat) ** 2 + (lng - lastLng) ** 2) * 111;
+
+              let timeDiff = (now - lastTime) / 1000 / 3600;
+
+              let speed = distance / timeDiff;
+
+              document.getElementById("busMessage").innerText =
+                getBusMessage(speed);
+            }
+
+            lastLat = lat;
+            lastLng = lng;
+            lastTime = now;
+
+            fetch("/update_location", {
+              method: "POST",
+
+              headers: {
+                "Content-Type": "application/json",
+              },
+
+              body: JSON.stringify({
+                lat: lat,
+                lng: lng,
+                bus: document.getElementById("busNumber").value,
+              }),
+            });
+          },
+
+          function () {
+            alert("Location permission required");
+          },
+
+          {
+            enableHighAccuracy: true,
+          },
+        );
+      }
+
+      function stopTracking() {
+        navigator.geolocation.clearWatch(watchId);
+
+        document.getElementById("trackStatus").innerText = "Stopped";
+
+        document.getElementById("trackStatus").className = "stopped";
+      }
+    </script>
+  </body>
+</html>
