@@ -88,7 +88,7 @@ if(localStorage.getItem("sharing")=="true"){
 
 document.getElementById("stopBtn").style.display="inline";
 
-startTracking();
+setTimeout(startTracking, 1000);
 
 }
 
@@ -242,3 +242,4 @@ setInterval(updateBuses,2000);
 
 </body>
 </html>
+
