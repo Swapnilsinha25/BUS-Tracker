@@ -72,11 +72,17 @@ L.tileLayer(
 // use your static bus.png
 let busIcon = L.icon({
 iconUrl:"/static/bus.png",
+iconSize:[120,120]
+});
+let userIcon = L.icon({
+iconUrl:"https://cdn-icons-png.flaticon.com/512/149/149071.png",
 iconSize:[40,40]
 });
 
 
+
 let markers = {};
+let userMarker = null;
 
 let lastLat, lastLng, lastTime;
 
@@ -120,6 +126,27 @@ bus:localStorage.getItem("bus") || "default"
 });
 
 },
+function showUserLocation(){
+
+navigator.geolocation.getCurrentPosition(function(pos){
+
+let lat = pos.coords.latitude;
+let lng = pos.coords.longitude;
+
+if(userMarker)
+userMarker.setLatLng([lat,lng]);
+
+else
+userMarker = L.marker([lat,lng],{icon:userIcon})
+.addTo(map)
+.bindTooltip("You are here",{
+permanent:true,
+direction:"top"
+});
+
+});
+
+}
 
 function(error){
 
@@ -149,18 +176,22 @@ window.location="/";
 
 function getBusMessage(speed){
 
-if(speed<5)
+if(speed < 3)
 return "Bus is crawling like turtle 🐢";
 
-if(speed<20)
+if(speed < 15)
 return "Bus is chilling in traffic 🚗";
 
-if(speed<50)
+if(speed < 40)
+return "Bus is cruising smoothly 😎";
+
+if(speed < 70)
 return "Bus is zooming fast today ⚡";
 
 return "Driver is in beast mode 🔥";
 
 }
+
 
 
 function getDistance(lat1,lon1,lat2,lon2){
@@ -203,6 +234,14 @@ markers[b].setLatLng([lat,lng]);
 
 else
 markers[b]=L.marker([lat,lng],{icon:busIcon}).addTo(map);
+map.setView([lat,lng],16);
+if(b !== "default"){
+markers[b].bindTooltip(b,{
+permanent:true,
+direction:"top",
+offset:[0,-20]
+});
+}
 
 
 // calculate speed for YOUR bus
@@ -240,10 +279,14 @@ lastTime=now;
 
 
 setInterval(updateBuses,2000);
+showUserLocation();
+setInterval(showUserLocation,5000);
+
 
 </script>
 
 </body>
 </html>
+
 
 
