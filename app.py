@@ -3,7 +3,6 @@ import time
 
 app = Flask(__name__)
 
-# store multiple buses
 buses = {}
 
 @app.route("/")
@@ -18,7 +17,6 @@ def viewer():
 def update_location():
 
     data = request.json
-
     bus_id = data.get("bus", "default")
 
     buses[bus_id] = {
@@ -32,7 +30,6 @@ def update_location():
 
 @app.route("/get_locations")
 def get_locations():
-
     return jsonify(buses)
 
 
