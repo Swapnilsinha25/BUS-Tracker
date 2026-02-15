@@ -93,12 +93,13 @@ setTimeout(startTracking, 1000);
 }
 
 
-// THIS starts GPS from viewer page
 function startTracking(){
 
 navigator.geolocation.watchPosition(
 
 function(pos){
+
+console.log("Sending:", pos.coords.latitude, pos.coords.longitude);
 
 fetch("/update_location",{
 
@@ -112,7 +113,7 @@ body:JSON.stringify({
 
 lat:pos.coords.latitude,
 lng:pos.coords.longitude,
-bus:bus
+bus:localStorage.getItem("bus") || "default"
 
 })
 
@@ -122,12 +123,14 @@ bus:bus
 
 function(error){
 
-console.log(error);
+console.log("GPS error:", error);
 
 },
 
 {
-enableHighAccuracy:true
+enableHighAccuracy:true,
+maximumAge:0,
+timeout:5000
 }
 
 );
@@ -242,4 +245,5 @@ setInterval(updateBuses,2000);
 
 </body>
 </html>
+
 
