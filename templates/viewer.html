@@ -1,83 +1,183 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-  <head>
-    <title>Bus Viewer</title>
+<head>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bus Viewer</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-      body {
-        margin: 0;
-        background: #070b1a;
-        color: white;
-        font-family: "Orbitron", sans-serif;
-      }
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-      #map {
-        height: 80vh;
-      }
+<style>
 
-      button {
-        padding: 12px 20px;
+body{
+margin:0;
+background:#070b1a;
+color:white;
+font-family:Arial;
+}
 
-        border: none;
-        border-radius: 10px;
+#map{
+height:75vh;
+}
 
-        background: #00d4ff;
+.info{
+padding:15px;
+}
 
-        color: white;
+button{
+padding:12px;
+margin:10px;
+border:none;
+border-radius:10px;
+background:#00d4ff;
+color:white;
+cursor:pointer;
+}
 
-        margin: 10px;
-      }
-    </style>
-  </head>
+</style>
 
-  <body>
-    <h2 style="padding: 10px">🛰 Bus Viewer</h2>
+</head>
 
-    <button id="stopBtn" onclick="stopSharing()" style="display: none">
-      Stop Sharing
-    </button>
+<body>
 
-    <div id="map"></div>
+<h2 style="padding:10px;">🛰 Bus Viewer</h2>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<button id="stopBtn" onclick="stopSharing()" style="display:none;">
+Stop Sharing
+</button>
 
-    <script>
-      let map = L.map("map").setView([28.6139, 77.209], 13);
+<div id="map"></div>
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
-        map,
-      );
+<div class="info">
 
-      let markers = {};
+<p id="speed">Speed: --</p>
+<p id="message">Waiting for bus...</p>
 
-      if (localStorage.getItem("sharing") == "true")
-        document.getElementById("stopBtn").style.display = "inline";
+</div>
 
-      function stopSharing() {
-        localStorage.setItem("sharing", "false");
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-        alert("Stopped sharing");
-      }
+<script>
 
-      function updateBuses() {
-        fetch("/get_locations")
-          .then((res) => res.json())
-          .then((data) => {
-            for (let bus in data) {
-              let lat = data[bus].lat;
-              let lng = data[bus].lng;
+let map = L.map('map').setView([28.6139,77.2090],13);
 
-              if (markers[bus]) markers[bus].setLatLng([lat, lng]);
-              else markers[bus] = L.marker([lat, lng]).addTo(map);
-            }
-          });
-      }
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+).addTo(map);
 
-      setInterval(updateBuses, 2000);
-    </script>
-  </body>
+
+let busIcon = L.icon({
+iconUrl: "/static/bus.png",
+iconSize: [40,40]
+});
+
+
+let markers = {};
+
+let lastLat, lastLng, lastTime;
+
+if(localStorage.getItem("sharing")=="true")
+document.getElementById("stopBtn").style.display="inline";
+
+
+function stopSharing(){
+
+localStorage.setItem("sharing","false");
+
+window.location="/";
+
+}
+
+
+function getBusMessage(speed){
+
+if(speed < 5)
+return "Bus is crawling like turtle 🐢";
+
+if(speed < 20)
+return "Bus is chilling in traffic 🚗";
+
+if(speed < 50)
+return "Bus is zooming fast today ⚡";
+
+return "Driver is in beast mode 🔥";
+
+}
+
+
+function getDistance(lat1,lon1,lat2,lon2){
+
+let R=6371;
+
+let dLat=(lat2-lat1)*Math.PI/180;
+let dLon=(lon2-lon1)*Math.PI/180;
+
+let a=
+Math.sin(dLat/2)**2+
+Math.cos(lat1*Math.PI/180)*
+Math.cos(lat2*Math.PI/180)*
+Math.sin(dLon/2)**2;
+
+let c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+
+return R*c;
+
+}
+
+
+function updateBuses(){
+
+fetch("/get_locations")
+
+.then(res=>res.json())
+
+.then(data=>{
+
+for(let bus in data){
+
+let lat=data[bus].lat;
+let lng=data[bus].lng;
+
+if(markers[bus])
+markers[bus].setLatLng([lat,lng]);
+
+else
+markers[bus]=L.marker([lat,lng],{icon:busIcon}).addTo(map);
+
+
+let now=Date.now();
+
+if(lastLat){
+
+let dist=getDistance(lastLat,lastLng,lat,lng);
+let timeDiff=(now-lastTime)/1000/3600;
+
+let speed=dist/timeDiff;
+
+document.getElementById("speed").innerText=
+"Speed: "+speed.toFixed(1)+" km/h";
+
+document.getElementById("message").innerText=
+getBusMessage(speed);
+
+}
+
+lastLat=lat;
+lastLng=lng;
+lastTime=now;
+
+}
+
+});
+
+}
+
+setInterval(updateBuses,2000);
+
+</script>
+
+</body>
 </html>
+
