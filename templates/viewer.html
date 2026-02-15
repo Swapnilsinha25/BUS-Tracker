@@ -19,7 +19,7 @@ font-family:Arial;
 }
 
 #map{
-height:70vh;
+height:75vh;
 }
 
 .info{
@@ -62,23 +62,26 @@ Stop Sharing
 
 <script>
 
+// create map
 let map = L.map('map').setView([28.6139,77.2090],13);
 
+// load tiles
 L.tileLayer(
 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 ).addTo(map);
 
 
-// use your static bus.png
+// BUS ICON (big)
 let busIcon = L.icon({
 iconUrl:"/static/bus.png",
 iconSize:[120,120]
 });
+
+// USER ICON
 let userIcon = L.icon({
 iconUrl:"https://cdn-icons-png.flaticon.com/512/149/149071.png",
 iconSize:[40,40]
 });
-
 
 
 let markers = {};
@@ -86,7 +89,7 @@ let userMarker = null;
 
 let lastLat, lastLng, lastTime;
 
-let bus = localStorage.getItem("bus") || "default";
+let myBus = localStorage.getItem("bus") || "default";
 
 
 // show stop button if sharing
@@ -94,18 +97,17 @@ if(localStorage.getItem("sharing")=="true"){
 
 document.getElementById("stopBtn").style.display="inline";
 
-setTimeout(startTracking, 1000);
+startTracking();
 
 }
 
 
+// TRACK BUS SHARER GPS
 function startTracking(){
 
 navigator.geolocation.watchPosition(
 
 function(pos){
-
-console.log("Sending:", pos.coords.latitude, pos.coords.longitude);
 
 fetch("/update_location",{
 
@@ -119,45 +121,20 @@ body:JSON.stringify({
 
 lat:pos.coords.latitude,
 lng:pos.coords.longitude,
-bus:localStorage.getItem("bus") || "default"
+bus:myBus
 
 })
 
 });
 
 },
-function showUserLocation(){
 
-navigator.geolocation.getCurrentPosition(function(pos){
-
-let lat = pos.coords.latitude;
-let lng = pos.coords.longitude;
-
-if(userMarker)
-userMarker.setLatLng([lat,lng]);
-
-else
-userMarker = L.marker([lat,lng],{icon:userIcon})
-.addTo(map)
-.bindTooltip("You are here",{
-permanent:true,
-direction:"top"
-});
-
-});
-
-}
-
-function(error){
-
-console.log("GPS error:", error);
-
+function(err){
+console.log(err);
 },
 
 {
-enableHighAccuracy:true,
-maximumAge:0,
-timeout:5000
+enableHighAccuracy:true
 }
 
 );
@@ -165,6 +142,7 @@ timeout:5000
 }
 
 
+// STOP SHARING
 function stopSharing(){
 
 localStorage.setItem("sharing","false");
@@ -174,18 +152,39 @@ window.location="/";
 }
 
 
+// SHOW USER LOCATION (viewer)
+function showUserLocation(){
+
+navigator.geolocation.getCurrentPosition(function(pos){
+
+let lat = pos.coords.latitude;
+let lng = pos.coords.longitude;
+
+if(userMarker)
+userMarker.setLatLng([lat,lng]);
+else
+userMarker = L.marker([lat,lng],{icon:userIcon})
+.addTo(map)
+.bindTooltip("You are here",{permanent:true});
+
+});
+
+}
+
+
+// FUN SMART MESSAGES
 function getBusMessage(speed){
 
-if(speed < 3)
+if(speed<3)
 return "Bus is crawling like turtle 🐢";
 
-if(speed < 15)
+if(speed<15)
 return "Bus is chilling in traffic 🚗";
 
-if(speed < 40)
+if(speed<40)
 return "Bus is cruising smoothly 😎";
 
-if(speed < 70)
+if(speed<70)
 return "Bus is zooming fast today ⚡";
 
 return "Driver is in beast mode 🔥";
@@ -193,7 +192,7 @@ return "Driver is in beast mode 🔥";
 }
 
 
-
+// DISTANCE CALC
 function getDistance(lat1,lon1,lat2,lon2){
 
 let R=6371;
@@ -214,7 +213,7 @@ return R*c;
 }
 
 
-// THIS fetches all buses and displays them
+// UPDATE BUS MARKERS
 function updateBuses(){
 
 fetch("/get_locations")
@@ -229,23 +228,23 @@ let lat=data[b].lat;
 let lng=data[b].lng;
 
 
+// create or update marker
 if(markers[b])
 markers[b].setLatLng([lat,lng]);
+else{
 
-else
-markers[b]=L.marker([lat,lng],{icon:busIcon}).addTo(map);
+markers[b]=L.marker([lat,lng],{icon:busIcon})
+.addTo(map)
+.bindTooltip(b,{permanent:true});
+
+// auto focus on bus
 map.setView([lat,lng],16);
-if(b !== "default"){
-markers[b].bindTooltip(b,{
-permanent:true,
-direction:"top",
-offset:[0,-20]
-});
+
 }
 
 
-// calculate speed for YOUR bus
-if(b===bus){
+// speed only for your bus
+if(b===myBus){
 
 let now=Date.now();
 
@@ -278,15 +277,14 @@ lastTime=now;
 }
 
 
-setInterval(updateBuses,2000);
+// RUN EVERYTHING
 showUserLocation();
 setInterval(showUserLocation,5000);
 
+updateBuses();
+setInterval(updateBuses,2000);
 
 </script>
 
 </body>
 </html>
-
-
-
