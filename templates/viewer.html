@@ -1,39 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8">
+<title>Bus Tracker Viewer</title>
 
-<title>Bus Viewer</title>
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
 
 body{
 margin:0;
-background:#070b1a;
-color:white;
 font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
 }
 
 #map{
-height:75vh;
+height:80vh;
+width:100%;
 }
 
-.info{
-padding:15px;
-}
-
-button{
+#info{
 padding:10px;
-margin:10px;
-border:none;
-border-radius:8px;
-background:#00d4ff;
-color:white;
-cursor:pointer;
+background:#020617;
+}
+
+#status{
+font-size:18px;
+margin:5px;
+color:#38bdf8;
+}
+
+#eta{
+font-size:20px;
+margin:5px;
+color:#22c55e;
+font-weight:bold;
 }
 
 </style>
@@ -42,184 +45,129 @@ cursor:pointer;
 
 <body>
 
-<h2 style="padding:10px;">🛰 Bus Viewer</h2>
+<h2>🚌 Live Bus Tracker</h2>
 
-<button id="stopBtn" onclick="stopSharing()" style="display:none;">
-Stop Sharing
-</button>
+<div id="info">
 
-<div id="map"></div>
+<div id="status">Finding your location...</div>
 
-<div class="info">
-
-<p id="speed">Speed: --</p>
-
-<p id="message">Waiting for bus...</p>
+<div id="eta">ETA: --</div>
 
 </div>
+
+<div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
 
-// create map
-let map = L.map('map').setView([28.6139,77.2090],13);
+// map init
+let map = L.map("map").setView([28.6139,77.2090],13);
 
-// load tiles
-L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-).addTo(map);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+maxZoom:19
+}).addTo(map);
 
 
-// BUS ICON (big)
+// bus icon
 let busIcon = L.icon({
-iconUrl:"/static/bus.png",
-iconSize:[80,80]
+iconUrl:"https://cdn-icons-png.flaticon.com/512/61/61231.png",
+iconSize:[32,32]
 });
 
-// USER ICON
+
+// user icon
 let userIcon = L.icon({
 iconUrl:"https://cdn-icons-png.flaticon.com/512/149/149071.png",
-iconSize:[40,40]
+iconSize:[32,32]
 });
 
 
-let markers = {};
 let userMarker = null;
 
-let lastLat, lastLng, lastTime;
-
-let myBus = localStorage.getItem("bus");
-
-if(!myBus){
-    myBus = "Bus-" + Math.floor(Math.random()*1000);
-    localStorage.setItem("bus", myBus);
-}
+let markers = {};
 
 
+// fun texts
+let funTexts = [
 
-// show stop button if sharing
-if(localStorage.getItem("sharing")=="true"){
+"Scanning satellites... 🛰️",
+"Locating buses... 🚌",
+"Tracking in real-time... ⚡",
+"Finding nearest bus... 📍",
+"Almost there... ⏳",
+"Connected successfully ✅"
 
-document.getElementById("stopBtn").style.display="inline";
-
-startTracking();
-
-}
-
-
-// TRACK BUS SHARER GPS
-function startTracking(){
-
-navigator.geolocation.watchPosition(
-
-function(pos){
-
-fetch("/update_location",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-
-lat:pos.coords.latitude,
-lng:pos.coords.longitude,
-bus:myBus
-
-})
-
-});
-
-},
-
-function(err){
-console.log(err);
-},
-
-{
-enableHighAccuracy:true
-}
-
-);
-
-}
+];
 
 
-// STOP SHARING
-function stopSharing(){
+// distance function
+function getDistance(lat1, lon1, lat2, lon2){
 
-localStorage.setItem("sharing","false");
+let R = 6371;
 
-window.location="/";
+let dLat = (lat2-lat1) * Math.PI/180;
+let dLon = (lon2-lon1) * Math.PI/180;
 
-}
+let a =
+Math.sin(dLat/2)*Math.sin(dLat/2) +
+Math.cos(lat1*Math.PI/180) *
+Math.cos(lat2*Math.PI/180) *
+Math.sin(dLon/2)*Math.sin(dLon/2);
 
-
-// SHOW USER LOCATION (viewer)
-function showUserLocation(){
-
-navigator.geolocation.getCurrentPosition(function(pos){
-
-let lat = pos.coords.latitude;
-let lng = pos.coords.longitude;
-
-if(userMarker)
-userMarker.setLatLng([lat,lng]);
-else
-userMarker = L.marker([lat,lng],{icon:userIcon})
-.addTo(map)
-.bindTooltip("You are here",{permanent:true});
-
-});
-
-}
-
-
-// FUN SMART MESSAGES
-function getBusMessage(speed){
-
-if(speed<3)
-return "Bus is crawling like turtle 🐢";
-
-if(speed<15)
-return "Bus is chilling in traffic 🚗";
-
-if(speed<40)
-return "Bus is cruising smoothly 😎";
-
-if(speed<70)
-return "Bus is zooming fast today ⚡";
-
-return "Driver is in beast mode 🔥";
-
-}
-
-
-// DISTANCE CALC
-function getDistance(lat1,lon1,lat2,lon2){
-
-let R=6371;
-
-let dLat=(lat2-lat1)*Math.PI/180;
-let dLon=(lon2-lon1)*Math.PI/180;
-
-let a=
-Math.sin(dLat/2)**2+
-Math.cos(lat1*Math.PI/180)*
-Math.cos(lat2*Math.PI/180)*
-Math.sin(dLon/2)**2;
-
-let c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+let c = 2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 
 return R*c;
 
 }
 
 
-// UPDATE BUS MARKERS
+
+// show fun texts properly
+let textIndex = 0;
+
+setInterval(()=>{
+
+document.getElementById("status").innerText =
+funTexts[textIndex];
+
+textIndex++;
+
+if(textIndex >= funTexts.length)
+textIndex = 0;
+
+},2000);
+
+
+
+
+// get user location
+navigator.geolocation.watchPosition(pos=>{
+
+let lat = pos.coords.latitude;
+let lng = pos.coords.longitude;
+
+if(userMarker){
+
+userMarker.setLatLng([lat,lng]);
+
+}
+else{
+
+userMarker = L.marker([lat,lng],{icon:userIcon})
+.addTo(map)
+.bindTooltip("You are here",{permanent:true});
+
+map.setView([lat,lng],15);
+
+}
+
+});
+
+
+
+
+// update buses
 function updateBuses(){
 
 fetch("/get_locations")
@@ -228,53 +176,70 @@ fetch("/get_locations")
 
 .then(data=>{
 
+
+// remove inactive markers
+for(let b in markers){
+
+if(!data[b]){
+
+map.removeLayer(markers[b]);
+
+delete markers[b];
+
+}
+
+}
+
+
+// add or update markers
 for(let b in data){
 
-let lat=data[b].lat;
-let lng=data[b].lng;
+let lat = data[b].lat;
+let lng = data[b].lng;
 
+if(markers[b]){
 
-// create or update marker
-if(markers[b])
 markers[b].setLatLng([lat,lng]);
+
+}
 else{
 
-markers[b]=L.marker([lat,lng],{icon:busIcon})
+markers[b] =
+L.marker([lat,lng],{icon:busIcon})
 .addTo(map)
 .bindTooltip(b,{permanent:true});
 
-// auto focus on bus
-map.setView([lat,lng],16);
 
-}
+// click event
+markers[b].on("click", function(){
+
+if(userMarker){
+
+let user = userMarker.getLatLng();
+
+let dist =
+getDistance(
+lat,
+lng,
+user.lat,
+user.lng
+);
+
+let speed = 30; // km/h assumed
+
+let eta =
+(dist / speed) * 60;
 
 
-// speed only for your bus
-if(b===myBus){
+document.getElementById("eta").innerText =
+"ETA: " + eta.toFixed(1) + " minutes";
 
-let now=Date.now();
 
-if(lastLat){
-
-let dist=getDistance(lastLat,lastLng,lat,lng);
-
-let timeDiff=(now-lastTime)/1000/3600;
-
-let speed=dist/timeDiff;
-
-document.getElementById("speed").innerText=
-"Speed: "+speed.toFixed(1)+" km/h";
-
-document.getElementById("message").innerText=
-getBusMessage(speed);
-
-}
-
-lastLat=lat;
-lastLng=lng;
-lastTime=now;
-
-}
+document.getElementById("status").innerText =
+"Bus " + b +
+" is " +
+dist.toFixed(2) +
+" km away";
 
 }
 
@@ -282,17 +247,20 @@ lastTime=now;
 
 }
 
+}
 
-// RUN EVERYTHING
-showUserLocation();
-setInterval(showUserLocation,5000);
 
-updateBuses();
-setInterval(updateBuses,2000);
+});
+
+}
+
+
+// refresh every second
+setInterval(updateBuses,1000);
+
 
 </script>
 
 </body>
+
 </html>
-
-
