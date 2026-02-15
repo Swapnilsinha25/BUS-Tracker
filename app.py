@@ -30,8 +30,23 @@ def update_location():
 
 @app.route("/get_locations")
 def get_locations():
+
+    current_time = time.time()
+
+    # remove buses inactive for 10 seconds
+    inactive = []
+
+    for bus_id in buses:
+        if current_time - buses[bus_id]["timestamp"] > 10:
+            inactive.append(bus_id)
+
+    for bus_id in inactive:
+        del buses[bus_id]
+
     return jsonify(buses)
+
 
 
 if __name__ == "__main__":
     app.run()
+
