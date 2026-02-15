@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>Bus Tracker</title>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+
 body{
 margin:0;
 height:100vh;
@@ -32,15 +35,18 @@ border-radius:10px;
 background:#00d4ff;
 color:white;
 cursor:pointer;
+font-size:16px;
 }
 
 input{
-padding:10px;
+padding:12px;
 border-radius:10px;
 border:none;
-margin-bottom:10px;
-width:100%;
+margin-bottom:15px;
+width:250px;
+font-size:15px;
 }
+
 </style>
 </head>
 
@@ -50,15 +56,15 @@ width:100%;
 
 <h2>🚌 Smart Bus Tracker</h2>
 
-<input id="busNumber" placeholder="Bus Number (optional)">
+<input id="busNumber" placeholder="Enter Bus Number (optional)">
 
 <br>
 
-<button onclick="shareLocation()">
+<button onclick="shareBus()">
 Share Bus Location
 </button>
 
-<button onclick="viewLocation()">
+<button onclick="viewBus()">
 View Bus Location
 </button>
 
@@ -66,56 +72,39 @@ View Bus Location
 
 <script>
 
-let watchId;
 
-function shareLocation(){
+function shareBus(){
 
-let bus = document.getElementById("busNumber").value || "default";
+let busName = document.getElementById("busNumber").value.trim();
 
+if(busName==="")
+busName="Bus-"+Math.floor(Math.random()*1000);
+
+
+// store bus name
+localStorage.setItem("bus", busName);
+
+// enable sharing
 localStorage.setItem("sharing","true");
-localStorage.setItem("bus",bus);
 
-navigator.geolocation.watchPosition(
-
-function(pos){
-
-fetch("/update_location",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-lat:pos.coords.latitude,
-lng:pos.coords.longitude,
-bus:bus
-})
-
-});
-
-},
-
-function(error){
-alert("Please allow location permission.");
-},
-
-{
-enableHighAccuracy:true
-}
-);
-
+// go to viewer
 window.location="/viewer";
 
 }
 
-function viewLocation(){
+
+function viewBus(){
+
+// disable sharing
 localStorage.setItem("sharing","false");
+
+// go to viewer
 window.location="/viewer";
+
 }
 
 </script>
 
 </body>
 </html>
+
