@@ -19,7 +19,7 @@ font-family:Arial;
 }
 
 #map{
-height:75vh;
+height:70vh;
 }
 
 .info{
@@ -27,10 +27,10 @@ padding:15px;
 }
 
 button{
-padding:12px;
+padding:10px;
 margin:10px;
 border:none;
-border-radius:10px;
+border-radius:8px;
 background:#00d4ff;
 color:white;
 cursor:pointer;
@@ -53,6 +53,7 @@ Stop Sharing
 <div class="info">
 
 <p id="speed">Speed: --</p>
+
 <p id="message">Waiting for bus...</p>
 
 </div>
@@ -68,9 +69,10 @@ L.tileLayer(
 ).addTo(map);
 
 
+// use your static bus.png
 let busIcon = L.icon({
-iconUrl: "/static/bus.png",
-iconSize: [40,40]
+iconUrl:"/static/bus.png",
+iconSize:[40,40]
 });
 
 
@@ -78,8 +80,59 @@ let markers = {};
 
 let lastLat, lastLng, lastTime;
 
-if(localStorage.getItem("sharing")=="true")
+let bus = localStorage.getItem("bus") || "default";
+
+
+// show stop button if sharing
+if(localStorage.getItem("sharing")=="true"){
+
 document.getElementById("stopBtn").style.display="inline";
+
+startTracking();
+
+}
+
+
+// THIS starts GPS from viewer page
+function startTracking(){
+
+navigator.geolocation.watchPosition(
+
+function(pos){
+
+fetch("/update_location",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+
+lat:pos.coords.latitude,
+lng:pos.coords.longitude,
+bus:bus
+
+})
+
+});
+
+},
+
+function(error){
+
+console.log(error);
+
+},
+
+{
+enableHighAccuracy:true
+}
+
+);
+
+}
 
 
 function stopSharing(){
@@ -93,13 +146,13 @@ window.location="/";
 
 function getBusMessage(speed){
 
-if(speed < 5)
+if(speed<5)
 return "Bus is crawling like turtle 🐢";
 
-if(speed < 20)
+if(speed<20)
 return "Bus is chilling in traffic 🚗";
 
-if(speed < 50)
+if(speed<50)
 return "Bus is zooming fast today ⚡";
 
 return "Driver is in beast mode 🔥";
@@ -127,6 +180,7 @@ return R*c;
 }
 
 
+// THIS fetches all buses and displays them
 function updateBuses(){
 
 fetch("/get_locations")
@@ -135,23 +189,28 @@ fetch("/get_locations")
 
 .then(data=>{
 
-for(let bus in data){
+for(let b in data){
 
-let lat=data[bus].lat;
-let lng=data[bus].lng;
+let lat=data[b].lat;
+let lng=data[b].lng;
 
-if(markers[bus])
-markers[bus].setLatLng([lat,lng]);
+
+if(markers[b])
+markers[b].setLatLng([lat,lng]);
 
 else
-markers[bus]=L.marker([lat,lng],{icon:busIcon}).addTo(map);
+markers[b]=L.marker([lat,lng],{icon:busIcon}).addTo(map);
 
+
+// calculate speed for YOUR bus
+if(b===bus){
 
 let now=Date.now();
 
 if(lastLat){
 
 let dist=getDistance(lastLat,lastLng,lat,lng);
+
 let timeDiff=(now-lastTime)/1000/3600;
 
 let speed=dist/timeDiff;
@@ -170,9 +229,12 @@ lastTime=now;
 
 }
 
+}
+
 });
 
 }
+
 
 setInterval(updateBuses,2000);
 
@@ -180,4 +242,3 @@ setInterval(updateBuses,2000);
 
 </body>
 </html>
-
