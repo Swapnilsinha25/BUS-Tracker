@@ -89,7 +89,13 @@ let userMarker = null;
 
 let lastLat, lastLng, lastTime;
 
-let myBus = localStorage.getItem("bus") || "default";
+let myBus = localStorage.getItem("bus");
+
+if(!myBus){
+    myBus = "Bus-" + Math.floor(Math.random()*1000);
+    localStorage.setItem("bus", myBus);
+}
+
 
 
 // show stop button if sharing
@@ -288,4 +294,5 @@ setInterval(updateBuses,2000);
 
 </body>
 </html>
+
 
