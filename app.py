@@ -3,11 +3,8 @@ import time
 
 app = Flask(__name__)
 
-location = {
-    "lat": 28.6139,
-    "lng": 77.2090,
-    "timestamp": time.time()
-}
+# store multiple buses
+buses = {}
 
 @app.route("/")
 def tracker():
@@ -19,19 +16,25 @@ def viewer():
 
 @app.route("/update_location", methods=["POST"])
 def update_location():
-    global location
 
     data = request.json
 
-    location["lat"] = data["lat"]
-    location["lng"] = data["lng"]
-    location["timestamp"] = time.time()
+    bus_id = data.get("bus", "default")
 
-    return jsonify({"status": "success"})
+    buses[bus_id] = {
+        "lat": data["lat"],
+        "lng": data["lng"],
+        "timestamp": time.time()
+    }
 
-@app.route("/get_location")
-def get_location():
-    return jsonify(location)
+    return jsonify({"status":"success"})
+
+
+@app.route("/get_locations")
+def get_locations():
+
+    return jsonify(buses)
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
