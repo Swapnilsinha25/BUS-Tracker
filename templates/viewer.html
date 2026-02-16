@@ -1,266 +1,308 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>Bus Tracker Viewer</title>
+  <head>
+    <title>Smart Bus Tracker</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-body{
-margin:0;
-font-family:Arial;
-background:#0f172a;
-color:white;
-text-align:center;
-}
+    <style>
+      body {
+        margin: 0;
+        background: #070b1a;
+        color: white;
+        font-family: Arial;
+      }
 
-#map{
-height:80vh;
-width:100%;
-}
+      #map {
+        height: 75vh;
+      }
 
-#info{
-padding:10px;
-background:#020617;
-}
+      .info {
+        padding: 15px;
+      }
+    </style>
+  </head>
 
-#status{
-font-size:18px;
-margin:5px;
-color:#38bdf8;
-}
+  <body>
+    <h2 style="padding: 10px">🚌 Smart Bus Tracker</h2>
 
-#eta{
-font-size:20px;
-margin:5px;
-color:#22c55e;
-font-weight:bold;
-}
+    <div id="map"></div>
 
-</style>
+    <div class="info">
+      <p id="speed">Speed: --</p>
 
-</head>
+      <p id="eta">ETA: --</p>
 
-<body>
+      <p id="message">Waiting...</p>
+    </div>
 
-<h2>🚌 Live Bus Tracker</h2>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<div id="info">
+    <script>
+      // INIT MAP
 
-<div id="status">Finding your location...</div>
+      let map = L.map("map");
 
-<div id="eta">ETA: --</div>
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+        map,
+      );
 
-</div>
+      // CUSTOM ICONS FROM STATIC FOLDER
 
-<div id="map"></div>
+      let busIcon = L.icon({
+        iconUrl: "/static/bus.png",
+        iconSize: [60, 60],
+      });
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+      let cafeIcon = L.icon({
+        iconUrl: "/static/cafe.png",
+        iconSize: [45, 45],
+      });
 
-<script>
+      let stopIcon = L.icon({
+        iconUrl: "/static/bus-stop.png",
+        iconSize: [40, 40],
+      });
 
-// map init
-let map = L.map("map").setView([28.6139,77.2090],13);
+      let userIcon = L.icon({
+        iconUrl: "/static/user.png",
+        iconSize: [35, 35],
+      });
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-maxZoom:19
-}).addTo(map);
+      // ADD CAFE MARKERS
 
+      let godavery = L.marker([28.634277474648822, 77.06873700003767], {
+        icon: cafeIcon,
+      })
+        .addTo(map)
+        .bindPopup("<b>Godavery Bakery 🍰</b>");
 
-// bus icon
-let busIcon = L.icon({
-iconUrl:"https://cdn-icons-png.flaticon.com/512/61/61231.png",
-iconSize:[32,32]
-});
+      let fo = L.marker([28.67038310983833, 77.10965043578932], {
+        icon: cafeIcon,
+      })
+        .addTo(map)
+        .bindPopup("<b>FO Food Overloaded 🍔</b>");
 
+      // BUS STOPS
 
-// user icon
-let userIcon = L.icon({
-iconUrl:"https://cdn-icons-png.flaticon.com/512/149/149071.png",
-iconSize:[32,32]
-});
+      let stops = [
+        { name: "Godavery Stop", lat: 28.6345, lng: 77.069 },
 
+        { name: "FO Stop", lat: 28.6705, lng: 77.1095 },
 
-let userMarker = null;
+        { name: "Paschim Vihar Stop", lat: 28.666, lng: 77.095 },
 
-let markers = {};
+        { name: "Janakpuri Stop", lat: 28.621, lng: 77.085 },
+      ];
 
+      stops.forEach((stop) => {
+        L.marker([stop.lat, stop.lng], { icon: stopIcon })
+          .addTo(map)
+          .bindPopup("🚏 " + stop.name);
+      });
 
-// fun texts
-let funTexts = [
+      // SHOW AREA INITIALLY
 
-"Scanning satellites... 🛰️",
-"Locating buses... 🚌",
-"Tracking in real-time... ⚡",
-"Finding nearest bus... 📍",
-"Almost there... ⏳",
-"Connected successfully ✅"
+      map.fitBounds([
+        [28.634277474648822, 77.06873700003767],
+        [28.67038310983833, 77.10965043578932],
+      ]);
 
-];
+      // VARIABLES
 
+      let markers = {};
 
-// distance function
-function getDistance(lat1, lon1, lat2, lon2){
+      let userMarker = null;
 
-let R = 6371;
+      let routeLine = null;
 
-let dLat = (lat2-lat1) * Math.PI/180;
-let dLon = (lon2-lon1) * Math.PI/180;
+      let lastLat, lastLng, lastTime;
 
-let a =
-Math.sin(dLat/2)*Math.sin(dLat/2) +
-Math.cos(lat1*Math.PI/180) *
-Math.cos(lat2*Math.PI/180) *
-Math.sin(dLon/2)*Math.sin(dLon/2);
+      let myBus = localStorage.getItem("bus") || "Bus";
 
-let c = 2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      let sharing = localStorage.getItem("sharing") == "true";
 
-return R*c;
+      // DISTANCE CALCULATION
 
-}
+      function distance(lat1, lng1, lat2, lng2) {
+        let R = 6371;
 
+        let dLat = ((lat2 - lat1) * Math.PI) / 180;
 
+        let dLng = ((lng2 - lng1) * Math.PI) / 180;
 
-// show fun texts properly
-let textIndex = 0;
+        let a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
 
-setInterval(()=>{
+        let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-document.getElementById("status").innerText =
-funTexts[textIndex];
+        return R * c;
+      }
 
-textIndex++;
+      // FIND NEAREST STOP
 
-if(textIndex >= funTexts.length)
-textIndex = 0;
+      function nearestStop(lat, lng) {
+        let min = 999;
+        let nearest = null;
 
-},2000);
+        stops.forEach((stop) => {
+          let d = distance(lat, lng, stop.lat, stop.lng);
 
+          if (d < min) {
+            min = d;
+            nearest = stop;
+          }
+        });
 
+        return nearest;
+      }
 
+      // ETA USING FREE OSRM
 
-// get user location
-navigator.geolocation.watchPosition(pos=>{
+      async function getETA(busLat, busLng, userLat, userLng) {
+        let url =
+          "https://router.project-osrm.org/route/v1/driving/" +
+          busLng +
+          "," +
+          busLat +
+          ";" +
+          userLng +
+          "," +
+          userLat +
+          "?overview=false";
 
-let lat = pos.coords.latitude;
-let lng = pos.coords.longitude;
+        let res = await fetch(url);
 
-if(userMarker){
+        let data = await res.json();
 
-userMarker.setLatLng([lat,lng]);
+        let seconds = data.routes[0].duration;
 
-}
-else{
+        return Math.round(seconds / 60);
+      }
 
-userMarker = L.marker([lat,lng],{icon:userIcon})
-.addTo(map)
-.bindTooltip("You are here",{permanent:true});
+      // FUN MESSAGE
 
-map.setView([lat,lng],15);
+      function funMessage(speed) {
+        if (speed < 5) return "Bus crawling 🐢";
 
-}
+        if (speed < 20) return "Bus chilling 🚗";
 
-});
+        if (speed < 40) return "Bus cruising 😎";
 
+        return "Driver beast mode 🔥";
+      }
 
+      // TRACK USER LOCATION
 
+      navigator.geolocation.watchPosition((pos) => {
+        let lat = pos.coords.latitude;
 
-// update buses
-function updateBuses(){
+        let lng = pos.coords.longitude;
 
-fetch("/get_locations")
+        // USER MARKER
 
-.then(res=>res.json())
+        if (!userMarker) {
+          userMarker = L.marker([lat, lng], { icon: userIcon })
+            .addTo(map)
+            .bindPopup("You");
+        } else {
+          userMarker.setLatLng([lat, lng]);
+        }
 
-.then(data=>{
+        // SHARE BUS
 
+        if (sharing) {
+          fetch("/update_location", {
+            method: "POST",
 
-// remove inactive markers
-for(let b in markers){
+            headers: {
+              "Content-Type": "application/json",
+            },
 
-if(!data[b]){
+            body: JSON.stringify({
+              lat: lat,
+              lng: lng,
+              bus: myBus,
+            }),
+          });
+        }
+      });
 
-map.removeLayer(markers[b]);
+      // UPDATE BUS
 
-delete markers[b];
+      async function updateBus() {
+        let res = await fetch("/get_locations");
 
-}
+        let data = await res.json();
 
-}
+        for (let bus in data) {
+          let lat = data[bus].lat;
 
+          let lng = data[bus].lng;
 
-// add or update markers
-for(let b in data){
+          // BUS MARKER
 
-let lat = data[b].lat;
-let lng = data[b].lng;
+          if (!markers[bus]) {
+            markers[bus] = L.marker([lat, lng], { icon: busIcon })
+              .addTo(map)
+              .bindTooltip(bus, { permanent: true });
+          } else {
+            markers[bus].setLatLng([lat, lng]);
+          }
 
-if(markers[b]){
+          // DRAW ROUTE
 
-markers[b].setLatLng([lat,lng]);
+          let stop = nearestStop(lat, lng);
 
-}
-else{
+          if (routeLine) map.removeLayer(routeLine);
 
-markers[b] =
-L.marker([lat,lng],{icon:busIcon})
-.addTo(map)
-.bindTooltip(b,{permanent:true});
+          routeLine = L.polyline(
+            [
+              [lat, lng],
+              [stop.lat, stop.lng],
+            ],
+            { color: "cyan", weight: 4 },
+          ).addTo(map);
 
+          // SPEED
 
-// click event
-markers[b].on("click", function(){
+          if (lastLat) {
+            let d = distance(lastLat, lastLng, lat, lng);
 
-if(userMarker){
+            let t = (Date.now() - lastTime) / 3600000;
 
-let user = userMarker.getLatLng();
+            let speed = d / t;
 
-let dist =
-getDistance(
-lat,
-lng,
-user.lat,
-user.lng
-);
+            document.getElementById("speed").innerText =
+              "Speed: " + speed.toFixed(1) + " km/h";
 
-let speed = 30; // km/h assumed
+            document.getElementById("message").innerText = funMessage(speed);
 
-let eta =
-(dist / speed) * 60;
+            // ETA
 
+            if (userMarker) {
+              let user = userMarker.getLatLng();
 
-document.getElementById("eta").innerText =
-"ETA: " + eta.toFixed(1) + " minutes";
+              let eta = await getETA(lat, lng, user.lat, user.lng);
 
+              document.getElementById("eta").innerText = "ETA: " + eta + " min";
+            }
+          }
 
-document.getElementById("status").innerText =
-"Bus " + b +
-" is " +
-dist.toFixed(2) +
-" km away";
+          lastLat = lat;
+          lastLng = lng;
+          lastTime = Date.now();
+        }
+      }
 
-}
+      // REFRESH EVERY 2s
 
-});
-
-}
-
-}
-
-
-});
-
-}
-
-
-// refresh every second
-setInterval(updateBuses,1000);
-
-
-</script>
-
-</body>
-
+      setInterval(updateBus, 2000);
+    </script>
+  </body>
 </html>
