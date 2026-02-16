@@ -2,7 +2,7 @@
 <html>
 <head>
 
-<title>Bus Tracker</title>
+<title>Smart Bus Tracker</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -20,34 +20,63 @@ color:white;
 }
 
 .card{
-padding:40px;
-border-radius:15px;
-background:rgba(20,30,60,0.4);
-backdrop-filter:blur(15px);
-text-align:center;
-}
 
-button{
-padding:15px 20px;
-margin:10px;
-border:none;
-border-radius:10px;
-background:#00d4ff;
-color:white;
-cursor:pointer;
-font-size:16px;
+background:rgba(20,30,60,0.4);
+
+padding:40px;
+
+border-radius:15px;
+
+text-align:center;
+
+box-shadow:0 0 20px rgba(0,0,0,0.5);
+
 }
 
 input{
+
 padding:12px;
-border-radius:10px;
-border:none;
-margin-bottom:15px;
+
 width:250px;
-font-size:15px;
+
+border:none;
+
+border-radius:10px;
+
+margin-bottom:20px;
+
+font-size:16px;
+
+}
+
+button{
+
+padding:12px 20px;
+
+margin:10px;
+
+border:none;
+
+border-radius:10px;
+
+background:#00d4ff;
+
+color:white;
+
+font-size:16px;
+
+cursor:pointer;
+
+}
+
+button:hover{
+
+background:#00aacc;
+
 }
 
 </style>
+
 </head>
 
 <body>
@@ -56,7 +85,10 @@ font-size:15px;
 
 <h2>🚌 Smart Bus Tracker</h2>
 
-<input id="busNumber" placeholder="Enter Bus Number (optional)">
+<input
+id="busName"
+placeholder="Enter Bus Name (optional)"
+>
 
 <br>
 
@@ -73,38 +105,35 @@ View Bus Location
 <script>
 
 
+// SHARE MODE
 function shareBus(){
 
-let busName = document.getElementById("busNumber").value.trim();
+let bus =
+document.getElementById("busName").value.trim();
 
-if(busName==="")
-busName="Bus-"+Math.floor(Math.random()*1000);
+if(bus==="")
+bus="Bus";
 
+localStorage.setItem("bus",bus);
 
-// store bus name
-localStorage.setItem("bus", busName);
-
-// enable sharing
 localStorage.setItem("sharing","true");
 
-// go to viewer
 window.location="/viewer";
 
 }
 
 
+// VIEW MODE
 function viewBus(){
 
-// disable sharing
 localStorage.setItem("sharing","false");
 
-// go to viewer
 window.location="/viewer";
 
 }
+
 
 </script>
 
 </body>
 </html>
-
